@@ -1,0 +1,278 @@
+﻿using System.Security.Claims;
+using ChatApp.Services;
+using ChatApp.SignalR;
+using Domain.DTOs;
+using Domain.Enums;
+using Domain.Services.Interfaces;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.SignalR;
+
+namespace ChatApp.Hubs
+{
+    [Authorize]
+    public class ChatHub : Hub
+    {
+        private readonly IChatService _chatService;
+        private readonly IGroupChatService _groupChatService;
+        private readonly IUserService _userService;
+
+        public ChatHub(IChatService chatService, IGroupChatService groupChatService, IUserService userService)
+        {
+            _chatService = chatService;
+            _groupChatService = groupChatService;
+            _userService = userService;
+        }
+
+        public async Task SendGroupMessage(Guid groupId, string message, string clientTempId)
+        {
+            var senderId = GetUserId();
+            if (senderId == Guid.Empty)
+                throw new HubException("Invalid user");
+
+            var dto = await _groupChatService.SendGroupMessageAsync(
+                groupId,
+                senderId,
+                message
+            );
+
+            // 🔥 ADD THIS
+            dto.ClientTempId = clientTempId;
+
+            await Clients.Group(groupId.ToString())
+                .SendAsync("ReceiveGroupMessage", dto);
+        }
+
+        //public async Task SendGroupMessage(Guid groupId, string message)
+        //{
+        //    var senderId = GetUserId();
+        //    if (senderId == Guid.Empty)
+        //        throw new HubException("Invalid user");
+
+        //    var dto = await _groupChatService.SendGroupMessageAsync(
+        //        groupId,
+        //        senderId,
+        //        message
+        //    );
+
+        //    await Clients.Group(groupId.ToString())
+        //        .SendAsync("ReceiveGroupMessage", dto);
+        //}
+
+
+
+        public async Task SendMessage(
+    Guid senderId,
+    Guid receiverId,
+    string message,
+    string clientTempId   // 👈 NEW
+)
+        {
+            var savedMessage =
+                await _chatService.SendMessageAsync(senderId, receiverId, message);
+
+            var sender = await _userService.GetUserBasicAsync(senderId);
+
+            var realtimeDto = new RealtimeChatMessageDto
+            {
+                MessageId = savedMessage.MessageId,
+                SenderId = savedMessage.SenderId,
+                ReceiverId = savedMessage.ReceiverId,
+                SenderName = sender?.UserName ?? "Unknown",
+                MessageText = savedMessage.MessageText,
+                SentAt = savedMessage.SentAt,
+
+                ClientTempId = clientTempId   // 👈 IMPORTANT
+            };
+
+            await Clients.User(senderId.ToString())
+                .SendAsync("ReceiveMessage", realtimeDto);
+
+            if (UserConnectionManager.IsOnline(receiverId))
+            {
+                await Clients.User(receiverId.ToString())
+                    .SendAsync("ReceiveMessage", realtimeDto);
+
+                await _chatService.MarkAsDelivered(savedMessage.MessageId);
+
+                await Clients.User(senderId.ToString())
+                    .SendAsync("MessageStatusUpdated", new
+                    {
+                        messageId = savedMessage.MessageId,
+                        status = "Delivered"
+                    });
+            }
+        }
+
+
+
+
+
+
+        public async Task JoinGroup(Guid groupId)
+        {
+            await Groups.AddToGroupAsync(Context.ConnectionId, groupId.ToString());
+        }
+
+        public async Task GroupMessageSeen(Guid messageId, Guid groupId)
+        {
+            var userId = GetUserId();
+            if (userId == Guid.Empty) return;
+
+            await _groupChatService.MarkGroupMessageSeenAsync(messageId, userId);
+
+            await Clients.Group(groupId.ToString())
+                .SendAsync("GroupMessageSeen", new
+                {
+                    MessageId = messageId,
+                    UserId = userId
+                });
+        }
+
+        public async Task LeaveGroup(Guid groupId)
+        {
+            await Groups.RemoveFromGroupAsync(Context.ConnectionId, groupId.ToString());
+        }
+
+        private Guid GetUserId()
+        {
+            var claim = Context.User?
+                .FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            return Guid.TryParse(claim, out var id)
+                ? id
+                : Guid.Empty;
+        }
+
+
+        public override async Task OnConnectedAsync()
+        {
+            var userId = GetUserId();
+            if (userId == Guid.Empty) return;
+
+            UserConnectionManager.Add(userId, Context.ConnectionId);
+            UserPresenceManager.Heartbeat(userId);
+
+            await Clients.Caller.SendAsync(
+                "OnlineUsers",
+                UserPresenceManager.GetOnlineUsers()
+            );
+
+            await Clients.Others.SendAsync("UserOnline", userId);
+
+            await base.OnConnectedAsync();
+        }
+
+
+
+
+        public override async Task OnDisconnectedAsync(Exception? exception)
+        {
+            var userId = GetUserId();
+            if (userId == Guid.Empty) return;
+
+            UserConnectionManager.Remove(userId, Context.ConnectionId);
+
+            // Only remove presence if NO connections remain
+            if (!UserConnectionManager.IsOnline(userId))
+            {
+                UserPresenceManager.Remove(userId);
+                await Clients.All.SendAsync("UserOffline", userId);
+            }
+
+            await base.OnDisconnectedAsync(exception);
+        }
+
+
+
+        public async Task Ping()
+        {
+            var userId = GetUserId();
+            if (userId == Guid.Empty) return;
+
+            //await _userService.UpdateLastSeenAsync(userId);
+        }
+
+
+
+
+        public async Task MessageSeen(Guid messageId, Guid senderId)
+        {
+            await _chatService.MarkAsSeen(messageId);
+
+            await Clients.User(senderId.ToString())
+                .SendAsync("MessageSeen", new
+                {
+                    messageId = messageId,
+                    status = "Read"
+                });
+        }
+
+
+
+        public async Task ClearChat(Guid otherUserId)
+        {
+            var currentUserId = GetUserId();
+            if (currentUserId == Guid.Empty) return;
+
+            await _chatService.ClearChatAsync(currentUserId, otherUserId);
+
+            // 🔥 notify ONLY this user to clear UI
+            await Clients.User(currentUserId.ToString())
+                .SendAsync("ChatCleared", new
+                {
+                    otherUserId = otherUserId
+                });
+        }
+
+
+        public async Task UserTyping(Guid senderId, Guid receiverId)
+        {
+            await Clients.User(receiverId.ToString())
+                .SendAsync("UserTyping", senderId);
+        }
+
+        public async Task UserStoppedTyping(Guid senderId, Guid receiverId)
+        {
+            await Clients.User(receiverId.ToString())
+                .SendAsync("UserStoppedTyping", senderId);
+        }
+
+
+        public async Task DeleteMessage(Guid messageId)
+        {
+            var userId = GetUserId();
+
+            var deleted = await _chatService.DeleteMessageAsync(messageId, userId);
+
+            if (deleted == null) return;
+
+            await Clients.Users(
+                deleted.SenderId.ToString(),
+                deleted.ReceiverId.ToString()
+            )
+            .SendAsync("MessageDeleted", new
+            {
+                messageId = deleted.MessageId
+            });
+        }
+
+        public async Task DeleteGroupMessage(Guid messageId, Guid groupId)
+        {
+            var userId = GetUserId();
+
+            var deleted = await _groupChatService.DeleteGroupMessageAsync(messageId, userId);
+
+            if (deleted == null) return;
+
+            await Clients.Group(groupId.ToString())
+                .SendAsync("GroupMessageDeleted", new
+                {
+                    messageId = deleted.GroupMessageId // ✅ FIX
+                });
+        }
+
+
+
+
+    }
+}

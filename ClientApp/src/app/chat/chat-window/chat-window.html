@@ -1,0 +1,113 @@
+<div class="chat-window user-chat">
+
+  <!-- HEADER -->
+  <div class="chat-header">
+
+    <div class="header-left">
+
+  <div class="name">
+    {{ selectedName || 'Select a chat' }}
+  </div>
+
+  <!-- STATUS -->
+  <div class="status" *ngIf="receiverId && !isTyping">
+
+    <span class="online" *ngIf="isOnline">
+      ● Online
+    </span>
+
+    <span class="offline" *ngIf="!isOnline">
+      ● Offline
+    </span>
+
+  </div>
+
+  <!-- TYPING -->
+  <div class="typing" *ngIf="receiverId && isTyping">
+    typing <span>.</span><span>.</span><span>.</span>
+  </div>
+
+</div>
+
+    <!-- ✅ FIXED -->
+    <button class="clear-btn" (click)="clearChat()">Clear Chat</button>
+
+  </div>
+
+  <!-- CHAT BODY -->
+  <div #chatBody class="chat-body">
+
+    <div *ngIf="isLoading" class="loading">Loading messages...</div>
+
+    <div *ngFor="let msg of messages"
+         class="message-row"
+         [ngClass]="msg.senderId === senderId ? 'me' : 'other'">
+
+      <div class="bubble">
+
+        <!-- ✅ FIXED MENU CONDITION -->
+        <div class="options"
+             *ngIf="msg.senderId === senderId && !msg.isDeleted && (msg.messageId || msg.clientTempId)">
+
+          <button class="dots"
+                  (click)="toggleMenu(getMenuKey(msg))">
+            ⋮
+          </button>
+
+          <div class="menu"
+               *ngIf="activeMenuId === getMenuKey(msg)">
+
+            <div class="menu-item"
+                 (click)="deleteMessage(msg)">
+              Delete
+            </div>
+
+          </div>
+        </div>
+
+        <!-- MESSAGE -->
+        <div class="text"
+             [ngClass]="{ deleted: msg.isDeleted }">
+
+          {{ msg.isDeleted
+              ? 'This message was deleted'
+              : msg.messageText }}
+
+        </div>
+
+        <!-- META (FIXED STRUCTURE) -->
+        <div class="meta">
+          {{ msg.sentAt | date:'shortTime' }}
+
+          <span *ngIf="msg.senderId === senderId" class="ticks">
+
+            <!-- OPTIONAL TICKS -->
+            <!--
+            <svg *ngIf="msg.status === 'Sent'" class="tick single"></svg>
+            <svg *ngIf="msg.status === 'Delivered'" class="tick double"></svg>
+            <svg *ngIf="msg.status === 'Read'" class="tick double read"></svg>
+            -->
+
+          </span>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+
+  <!-- INPUT -->
+  <div class="chat-input">
+
+    <input
+      [(ngModel)]="message"
+      (input)="onTyping()"
+      placeholder="Type a message..."
+      (keydown.enter)="$event.preventDefault(); send()"
+    />
+
+    <button type="button" (click)="send()">➤</button>
+
+  </div>
+
+</div>

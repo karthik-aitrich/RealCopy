@@ -1,0 +1,150 @@
+import { HttpClient } from '@angular/common/http';
+import { Injectable } from '@angular/core';
+import { tap } from 'rxjs';
+import { LoginResponse } from '../app/models/login-response.model';
+
+@Injectable({
+  providedIn: 'root'
+})
+export class AuthService {
+
+ private baseUrl = 'http://localhost:5146/api/v1/auth';
+
+
+ private pendingRegisterData: {
+    userName: string;
+    email: string;
+    password: string;
+  } | null = null;
+
+
+  constructor(private http: HttpClient) {}
+
+
+
+
+
+
+login(email: string, password: string) {
+  return this.http
+    .post<LoginResponse>(`${this.baseUrl}/login`, { email, password })
+    .pipe(
+      tap((res: LoginResponse) => {
+        localStorage.setItem('token', res.token);
+        localStorage.setItem('userId', res.userId);
+        localStorage.setItem('userName', res.userName);
+        localStorage.setItem('email', res.email);
+      })
+    );
+}
+
+
+getMe() {
+  return this.http.get<any>(`${this.baseUrl}/me`);
+}
+
+
+
+  register(userName: string, email: string, password: string) {
+  return this.http.post(
+    `${this.baseUrl}/register`,
+    { userName, email, password },
+    { responseType: 'text' } // 🔥 REQUIRED
+  );
+}
+
+
+logout() {
+  return this.http.post(`${this.baseUrl}/logout`, {});
+}
+
+setAuthSession(res: any) {
+  localStorage.setItem('token', res.token);
+  localStorage.setItem('userId', res.user.userId);
+  localStorage.setItem('userName', res.user.userName);
+  localStorage.setItem('email', res.user.email);
+}
+
+
+isLoggedIn(): boolean {
+  return !!localStorage.getItem('token');
+}
+
+
+changePassword(data: {
+  currentPassword: string;
+  newPassword: string;
+}) {
+  return this.http.post(
+    `${this.baseUrl}/change-password`,
+    data
+  );
+}
+
+
+forgotPassword(email: string) {
+  return this.http.post(
+    `${this.baseUrl}/forgot-password`,
+    { email }
+  );
+}
+
+resetPassword(token: string, newPassword: string) {
+  return this.http.post(
+    `${this.baseUrl}/reset-password`,
+    {
+      Token: token,
+      NewPassword: newPassword
+    }
+  );
+}
+
+
+
+
+// 🔹 STORE REGISTER DATA TEMPORARILY
+setPendingRegister(data: {
+  userName: string;
+  email: string;
+  password: string;
+}) {
+  this.pendingRegisterData = data;
+}
+
+// 🔹 READ REGISTER DATA
+getPendingRegister() {
+  return this.pendingRegisterData;
+}
+
+// getMyProfile() {
+//   return this.http.get<any>('http://localhost:5146/api/v1/auth/profile');
+// }
+
+
+
+// 🔹 CLEAR AFTER OTP SUCCESS
+clearPendingRegister() {
+  this.pendingRegisterData = null;
+}
+
+verifyOtp(formData: FormData) {
+  return this.http.post(
+    'http://localhost:5146/api/v1/auth/verify-otp',
+    formData
+  );
+}
+resendOtp(email: string) {
+  return this.http.post(
+    `${this.baseUrl}/register`,
+    {
+      userName: 'temp',   // backend ignores if already exists
+      email,
+      password: 'temp'    // backend ignores if user already pending
+    },
+    { responseType: 'text' }
+  );
+}
+
+
+
+}

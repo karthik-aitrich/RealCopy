@@ -1,0 +1,157 @@
+/* ================= USER CHAT OVERRIDES ================= */
+
+/* ===== MESSAGE BUBBLE ===== */
+.user-chat .bubble {
+  max-width: 55%;
+  min-width: 60px;
+
+  padding: 10px 36px 10px 14px;
+  border-radius: 14px;
+
+  font-size: 14px;
+  line-height: 1.5;
+
+  word-break: break-word;
+  display: inline-block;
+  position: relative;
+}
+
+/* ===== MESSAGE ROW ===== */
+.user-chat .message-row {
+  width: 100%;
+  display: flex;
+}
+
+.user-chat .message-row.me {
+  justify-content: flex-end;
+}
+
+.user-chat .message-row.other {
+  justify-content: flex-start;
+}
+
+/* ===== OPTIONS ===== */
+.user-chat .options {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+}
+
+/* ===== MENU ===== */
+.user-chat .menu {
+  position: absolute;
+  top: 28px;
+  right: 0;
+  z-index: 999;
+
+  min-width: 120px;
+  padding: 6px;
+
+  border-radius: 10px;
+  background: rgba(18, 16, 40, 0.98);
+  border: 1px solid rgba(255,255,255,0.08);
+
+  box-shadow: 0 10px 25px rgba(0,0,0,0.35);
+}
+
+.user-chat .menu-item {
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
+
+  color: #ffb4b4;
+  transition: 0.2s ease;
+}
+
+.user-chat .menu-item:hover {
+  background: rgba(255, 75, 75, 0.18);
+  color: #fff;
+}
+
+/* ===== DELETED ===== */
+.user-chat .text.deleted {
+  opacity: 0.6;
+  font-style: italic;
+}
+
+/* ===== HEADER (UPGRADED 🔥) ===== */
+.user-chat .header-left {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.user-chat .name {
+  font-size: 16px;
+  font-weight: 600;
+  color: #ffffff;
+  letter-spacing: 0.4px;
+}
+
+/* ===== ONLINE STATUS (PREMIUM 🔥) ===== */
+/* ===== STATUS (FIXED 🔥) ===== */
+.user-chat .status {
+  font-size: 12px;
+  margin-top: 2px;
+}
+
+/* 🟢 ONLINE */
+.user-chat .status .online {
+  color: #4ade80;
+  font-weight: 500;
+}
+
+/* 🔴 OFFLINE */
+.user-chat .status .offline {
+  color: #9ca3af;
+  font-weight: 400;
+}
+
+/* ===== TYPING (CLEAN 🔥) ===== */
+.user-chat .typing {
+  font-size: 12px;
+  color: #60a5fa;
+  font-style: italic;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+/* animated dots */
+.user-chat .typing span {
+  animation: typingDots 1.2s infinite;
+}
+
+.user-chat .typing span:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.user-chat .typing span:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+@keyframes typingDots {
+  0% { opacity: 0.2; }
+  50% { opacity: 1; }
+  100% { opacity: 0.2; }
+}
+
+/* ===== CLEAR BUTTON ===== */
+.user-chat .clear-btn {
+  padding: 8px 14px;
+  font-size: 12px;
+  border-radius: 10px;
+
+  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(255,255,255,0.08);
+  color: #e6e8ff;
+
+  transition: 0.2s ease;
+}
+
+.user-chat .clear-btn:hover {
+  background: linear-gradient(135deg, #ff6bdc, #5f6cff);
+  color: #fff;
+  border-color: transparent;
+}

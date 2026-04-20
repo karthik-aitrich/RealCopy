@@ -1,0 +1,103 @@
+<div class="sidebar">
+
+  <!-- HEADER -->
+  <div class="sidebar-header">
+
+    <div class="brand">
+      <img src="assets/logo.jpeg" class="logo-img" />
+      <span class="logo-text">Chatz</span>
+    </div>
+
+    <!-- SETTINGS (TOP RIGHT) -->
+    <div class="settings-top">
+     <button class="settings-icon" (click)="toggleSettings()">⋮</button>
+
+
+      <!-- DROPDOWN -->
+     <div class="settings-dropdown" *ngIf="showSettings">
+  <div class="dropdown-item" (click)="goToProfile()">
+    <span>👤</span> View Profile
+  </div>
+  <div class="dropdown-item" (click)="goToChangePassword()">
+    <span>🔒</span> Change Password
+  </div>
+</div>
+    </div>
+
+  </div>
+
+  <!-- SEARCH -->
+  <div class="search-box">
+    <input type="text" placeholder="Search..." />
+  </div>
+
+  <!-- TABS -->
+  <div class="tabs">
+    <button
+      [class.active]="activeTab === 'chats'"
+      (click)="activeTab = 'chats'">
+      Chats
+    </button>
+    <button
+      [class.active]="activeTab === 'groups'"
+      (click)="activeTab = 'groups'">
+      Groups
+    </button>
+  </div>
+
+  <!-- CHAT LIST -->
+  <div class="list" *ngIf="activeTab === 'chats'">
+    <div
+      class="list-item"
+      *ngFor="let user of users"
+      (click)="openChat(user)">
+       <div class="avatar-wrapper">
+
+  <!-- IMAGE AVATAR -->
+  <img
+    *ngIf="user.profilePhoto; else initials"
+    class="avatar-img"
+    [src]="'http://localhost:5146' + user.profilePhoto"
+  />
+
+  <!-- LETTER FALLBACK -->
+  <ng-template #initials>
+    <div class="avatar">
+      {{ user.userName.charAt(0) }}
+    </div>
+  </ng-template>
+
+  <!-- ONLINE DOT -->
+  <span
+    class="status-dot"
+    [class.online]="user.isOnline">
+  </span>
+
+</div>
+
+      <div class="info">
+        <div class="name">{{ user.userName }}</div>
+        <div class="sub">Tap to chat</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- GROUP LIST -->
+  <div class="list" *ngIf="activeTab === 'groups'">
+    <div
+      class="list-item"
+      *ngFor="let group of groups"
+      (click)="openGroup(group)">
+      <div class="avatar group">👥</div>
+      <div class="info">
+        <div class="name">{{ group.groupName }}</div>
+        <div class="sub">Group chat</div>
+      </div>
+    </div>
+
+    <button class="new-group-btn" (click)="createNewGroup()">
+      + New Group
+    </button>
+  </div>
+
+</div>

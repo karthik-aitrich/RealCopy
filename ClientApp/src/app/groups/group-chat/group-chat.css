@@ -1,0 +1,103 @@
+/* .info-btn {
+  border: none;
+  background: rgba(255,255,255,0.15);
+  color: white;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  cursor: pointer;
+} */
+/* ===== MESSAGE ROW ===== */
+.user-chat .message-row {
+  width: 100%;
+  display: flex;
+  margin-bottom: 8px;
+}
+
+.user-chat .message-row.me {
+  justify-content: flex-end;
+}
+
+.user-chat .message-row.other {
+  justify-content: flex-start;
+}
+
+/* ===== BUBBLE ===== */
+.user-chat .bubble {
+  max-width: 55%;
+  min-width: 60px;
+
+  padding: 10px 36px 10px 14px;
+  border-radius: 14px;
+
+  font-size: 14px;
+  line-height: 1.5;
+
+  word-break: break-word;
+  position: relative;
+}
+
+/* ===== SENDER NAME (GROUP ONLY) ===== */
+.group-chat .sender-name {
+  font-size: 11px;
+  font-weight: 500;
+  color: #8ab4ff;
+  margin-bottom: 2px;
+}
+
+/* ===== OPTIONS (⋮ BUTTON) ===== */
+.user-chat .options {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+}
+
+/* ===== MENU ===== */
+.user-chat .menu {
+  position: absolute;
+  top: 100%;        /* 🔥 push below bubble */
+  right: 0;
+
+  margin-top: 6px;  /* small gap */
+
+  z-index: 999;
+
+  min-width: 110px;
+  padding: 6px;
+
+  border-radius: 10px;
+  background: rgba(18, 16, 40, 0.98);
+  border: 1px solid rgba(255,255,255,0.08);
+
+  box-shadow: 0 10px 25px rgba(0,0,0,0.35);
+}
+
+/* ===== MENU ITEM ===== */
+.user-chat .menu-item {
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
+
+  color: #ffb4b4;
+  transition: 0.2s ease;
+}
+
+.user-chat .menu-item:hover {
+  background: rgba(255, 75, 75, 0.18);
+  color: #fff;
+}
+
+/* ===== DELETED TEXT ===== */
+.user-chat .text.deleted {
+  opacity: 0.6;
+  font-style: italic;
+}
+
+/* ===== META (TIME) ===== */
+.user-chat .meta {
+  font-size: 11px;
+  opacity: 0.6;
+  margin-top: 4px;
+  text-align: right;
+}
