@@ -5,7 +5,7 @@ import { User } from '../../models/user.model';
 import { AuthService } from '../../../services/auth.service';
 import { UserService } from '../../../services/user.service';
 import {  ChangeDetectorRef } from '@angular/core';
-
+import {ChatService} from '../../../services/chat.service';
 @Component({
   standalone: true,
   imports: [CommonModule],
@@ -18,11 +18,12 @@ export class ViewProfile implements OnInit {
   initial = '';
 
   constructor(
-    private userService: UserService,
-    private authService: AuthService,
-    private router: Router,
-     private cdr: ChangeDetectorRef
-  ) {}
+  private userService: UserService,
+  private authService: AuthService,
+  private chatService: ChatService,
+  private router: Router,
+  private cdr: ChangeDetectorRef
+) {}
 
   ngOnInit() {
     this.userService.getMyProfile().subscribe({
@@ -45,14 +46,22 @@ export class ViewProfile implements OnInit {
   }
 
   logout() {
-    this.authService.logout().subscribe({
-      next: () => this.clearSession(),
-      error: () => this.clearSession()
-    });
-  }
+  this.authService.logout().subscribe({
+    next: async () => {
+      await this.clearSession();
+    },
+    error: async () => {
+      await this.clearSession();
+    }
+  });
+}
 
-  private clearSession() {
-    localStorage.clear();
-    this.router.navigate(['/login']);
-  }
+private async clearSession() {
+
+  await this.chatService.stopConnection(); // 🔥 IMPORTANT
+
+  localStorage.clear();
+
+  this.router.navigate(['/login']);
+}
 }
