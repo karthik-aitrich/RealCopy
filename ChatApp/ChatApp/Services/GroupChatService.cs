@@ -28,14 +28,24 @@ namespace ChatApp.Services
 
         public async Task ClearGroupChatAsync(Guid groupId, Guid userId)
         {
-            var messages = await _context.GroupMessages
-                .Where(m => m.GroupId == groupId)
-                .ToListAsync();
+            var existing = await _context.Set<GroupChatClear>()
+                .FirstOrDefaultAsync(x =>
+                    x.GroupId == groupId &&
+                    x.UserId == userId);
 
-            foreach (var msg in messages)
+            if (existing == null)
             {
-                msg.IsDeleted = true;
-                msg.MessageText = string.Empty;
+                _context.Add(new GroupChatClear
+                {
+                    Id = Guid.NewGuid(),
+                    GroupId = groupId,
+                    UserId = userId,
+                    ClearedAt = DateTime.UtcNow
+                });
+            }
+            else
+            {
+                existing.ClearedAt = DateTime.UtcNow;
             }
 
             await _context.SaveChangesAsync();
@@ -53,7 +63,7 @@ namespace ChatApp.Services
             if (message.SenderId != userId)
                 return null;
 
-            message.IsDeleted = true;
+            message.Status = MessageStatus.Deleted;
             message.MessageText = string.Empty;
 
             await _context.SaveChangesAsync();
@@ -70,7 +80,7 @@ namespace ChatApp.Services
                 SenderName = user?.UserName ?? "Unknown",
                 MessageText = "This message was deleted",
                 SentAt = message.SentAt,
-                IsDeleted = true
+                Status = MessageStatus.Deleted
             };
         }
 
@@ -107,14 +117,25 @@ namespace ChatApp.Services
         }
 
         // 🔥 USED BY API CONTROLLER
-        public async Task<IEnumerable<GroupMessageDto>> GetGroupMessagesAsync(Guid groupId)
+        public async Task<IEnumerable<GroupMessageDto>> GetGroupMessagesAsync(Guid groupId, Guid currentUserId)
         {
             var messages = await _repo.GetGroupMessagesAsync(groupId);
 
             var result = new List<GroupMessageDto>();
 
+            var clear = await _context.GroupChatClears
+    .FirstOrDefaultAsync(x =>
+        x.GroupId == groupId &&
+        x.UserId == currentUserId);
+
+            var clearedAt = clear?.ClearedAt;
+
             foreach (var m in messages)
             {
+                // 🔥 THIS LINE IS THE KEY
+                if (clearedAt != null && m.SentAt <= clearedAt)
+                    continue;
+
                 var user = await _userRepo.GetUserByIdAsync(m.SenderId);
 
                 result.Add(new GroupMessageDto
@@ -125,14 +146,13 @@ namespace ChatApp.Services
                     SenderId = m.SenderId,
                     SenderName = user?.UserName ?? "Unknown",
 
-                    MessageText = m.IsDeleted
-        ? "This message was deleted"
-        : m.MessageText,
+                    MessageText = m.Status == MessageStatus.Deleted
+                        ? "This message was deleted"
+                        : m.MessageText,
 
                     SentAt = m.SentAt,
-                    IsDeleted = m.IsDeleted
+                    Status = m.Status
                 });
-
             }
 
             return result;

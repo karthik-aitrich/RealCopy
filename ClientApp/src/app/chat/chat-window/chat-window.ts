@@ -1,11 +1,7 @@
+// 🔥 CLEAN + FIXED VERSION
 import {
-  Component,
-  OnInit,
-  OnDestroy,
-  ViewChild,
-  ElementRef,
-  ChangeDetectorRef,
-  NgZone
+  Component, OnInit, OnDestroy, ViewChild, ElementRef,
+  ChangeDetectorRef, NgZone
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute } from '@angular/router';
@@ -26,7 +22,7 @@ export class ChatWindow implements OnInit, OnDestroy {
   messages: any[] = [];
 
   senderId!: string;
-  receiverId: string = '';
+  receiverId = '';
 
   message = '';
   selectedName = '';
@@ -40,7 +36,6 @@ export class ChatWindow implements OnInit, OnDestroy {
   private msgSub!: Subscription;
   private routeSub!: Subscription;
   private typingTimeout: any;
-
   private signalRReady = false;
 
   @ViewChild('chatBody') chatBody!: ElementRef;
@@ -66,7 +61,6 @@ export class ChatWindow implements OnInit, OnDestroy {
     this.routeSub = this.route.paramMap.subscribe(params => {
       const id = params.get('id');
 
-      // 🔥 RESET STATE
       this.receiverId = id ? String(id) : '';
       this.messages = [];
       this.isTyping = false;
@@ -78,7 +72,6 @@ export class ChatWindow implements OnInit, OnDestroy {
 
       this.setSelectedName();
       this.listenOnlineStatus();
-
       this.loadChat();
     });
   }
@@ -86,49 +79,29 @@ export class ChatWindow implements OnInit, OnDestroy {
   // ================= SIGNALR =================
   private registerEvents() {
 
-    // 🔥 MAIN MESSAGE STREAM
     this.msgSub = this.chat.incomingMessage$.subscribe(msg => {
       this.zone.run(() => this.handleIncoming(msg));
     });
 
-    // MESSAGE STATUS
-    this.chat.onMessageStatusUpdated(data => {
-      const m = this.messages.find(x => x.messageId === data.messageId);
-      if (m) {
-        m.status = data.status;
-        this.refresh();
-      }
-    });
-
-    // MESSAGE READ
-    this.chat.onMessageSeen(data => {
-      const m = this.messages.find(x => x.messageId === data.messageId);
-      if (m) {
-        m.status = 'Read';
-        this.refresh();
-      }
-    });
-
-    // TYPING
     this.chat.onUserTyping(id => {
-      if (id === this.receiverId && this.receiverId) {
+      if (id === this.receiverId) {
         this.isTyping = true;
-        this.cdr.detectChanges();
+        this.refresh();
       }
     });
 
     this.chat.onUserStoppedTyping(id => {
-      if (id === this.receiverId && this.receiverId) {
+      if (id === this.receiverId) {
         this.isTyping = false;
-        this.cdr.detectChanges();
+        this.refresh();
       }
     });
   }
 
-  // ================= HANDLE MESSAGE =================
+  // ================= HANDLE =================
   private handleIncoming(msg: any) {
 
-    // 🧹 CLEAR
+    // CLEAR
     if (msg.type === 'clear') {
       if (msg.otherUserId === this.receiverId) {
         this.messages = [];
@@ -137,11 +110,11 @@ export class ChatWindow implements OnInit, OnDestroy {
       return;
     }
 
-    // 🗑 DELETE
+    // DELETE
     if (msg.type === 'delete') {
       const m = this.messages.find(x => x.messageId === msg.messageId);
       if (m) {
-        m.isDeleted = true;
+        m.status = 1;
         m.messageText = 'This message was deleted';
         this.activeMenuId = null;
         this.refresh();
@@ -149,9 +122,10 @@ export class ChatWindow implements OnInit, OnDestroy {
       return;
     }
 
-    // 📨 NORMAL MESSAGE
+    // NORMAL MESSAGE
     msg.senderId = String(msg.senderId);
     msg.receiverId = String(msg.receiverId);
+    msg.status = msg.status ?? 0;
 
     const isChat =
       (msg.senderId === this.receiverId && msg.receiverId === this.senderId) ||
@@ -159,7 +133,6 @@ export class ChatWindow implements OnInit, OnDestroy {
 
     if (!isChat) return;
 
-    // 🔥 TEMP → REAL MATCH
     const index = this.messages.findIndex(
       m => m.clientTempId && m.clientTempId === msg.clientTempId
     );
@@ -173,7 +146,6 @@ export class ChatWindow implements OnInit, OnDestroy {
     this.refresh();
     this.scrollToBottom();
 
-    // 👁 READ
     if (msg.receiverId === this.senderId) {
       this.chat.markMessageSeen(msg.messageId, msg.senderId);
     }
@@ -193,15 +165,14 @@ export class ChatWindow implements OnInit, OnDestroy {
       receiverId: this.receiverId,
       messageText: text,
       sentAt: new Date(),
-      status: 'Sent',
-      isDeleted: false
+      status: 0 // 🔥 NORMAL
     };
 
     this.messages = [...this.messages, tempMsg];
     this.scrollToBottom();
 
     this.message = '';
-    this.cdr.detectChanges();
+    this.refresh();
 
     await this.chat.sendMessage(
       this.senderId,
@@ -218,7 +189,8 @@ export class ChatWindow implements OnInit, OnDestroy {
         this.messages = msgs.map(m => ({
           ...m,
           senderId: String(m.senderId),
-          receiverId: String(m.receiverId)
+          receiverId: String(m.receiverId),
+          status: m.status ?? 0
         }));
 
         this.isLoading = false;
@@ -239,16 +211,11 @@ export class ChatWindow implements OnInit, OnDestroy {
   }
 
   private listenOnlineStatus() {
-
-  this.chat.onlineUsers$.subscribe(users => {
-    console.log('🟢 Online users:', users);
-
-    this.isOnline = users.includes(this.receiverId);
-
-    this.cdr.detectChanges();
-  });
-
-}
+    this.chat.onlineUsers$.subscribe(users => {
+      this.isOnline = users.includes(this.receiverId);
+      this.refresh();
+    });
+  }
 
   // ================= MENU =================
   toggleMenu(id: string) {
@@ -302,7 +269,6 @@ export class ChatWindow implements OnInit, OnDestroy {
     }, 0);
   }
 
-  // ================= DESTROY =================
   ngOnDestroy() {
     this.routeSub?.unsubscribe();
     this.msgSub?.unsubscribe();

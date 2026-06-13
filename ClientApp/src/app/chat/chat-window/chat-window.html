@@ -67,14 +67,13 @@
 
         <!-- MESSAGE -->
         <div class="text"
-             [ngClass]="{ deleted: msg.isDeleted }">
+     [ngClass]="{ deleted: msg.status === 1 }">
 
-          {{ msg.isDeleted
-              ? 'This message was deleted'
-              : msg.messageText }}
+  {{ msg.status === 1
+      ? 'This message was deleted'
+      : msg.messageText }}
 
-        </div>
-
+</div>
         <!-- META (FIXED STRUCTURE) -->
         <div class="meta">
           {{ msg.sentAt | date:'shortTime' }}

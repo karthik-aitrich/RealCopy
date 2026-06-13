@@ -59,6 +59,26 @@ namespace ChatApp.Migrations
                     b.ToTable("Connections");
                 });
 
+            modelBuilder.Entity("Domain.Models.GroupChatClear", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("ClearedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("GroupId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("GroupChatClears");
+                });
+
             modelBuilder.Entity("Domain.Models.GroupMessageSeen", b =>
                 {
                     b.Property<Guid>("Id")
@@ -86,12 +106,6 @@ namespace ChatApp.Migrations
                     b.Property<Guid>("MessageId")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
-
-                    b.Property<DateTime?>("DeletedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("bit");
 
                     b.Property<string>("MessageText")
                         .IsRequired()
@@ -226,9 +240,6 @@ namespace ChatApp.Migrations
                     b.Property<Guid>("GroupId")
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("bit");
-
                     b.Property<string>("MessageText")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -238,6 +249,9 @@ namespace ChatApp.Migrations
 
                     b.Property<DateTime>("SentAt")
                         .HasColumnType("datetime2");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
 
                     b.HasKey("GroupMessageId");
 

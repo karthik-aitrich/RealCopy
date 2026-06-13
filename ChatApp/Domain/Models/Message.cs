@@ -17,10 +17,10 @@ namespace Domain.Models
         public string MessageText { get; set; } = null!;
         public DateTime SentAt { get; set; }
 
-        public MessageStatusEnum Status { get; set; }   // 👈 NEW
+        public MessageStatus Status { get; set; }   // 👈 NEW
 
-        public bool IsDeleted { get; set; } = false;
-        public DateTime? DeletedAt { get; set; }
+        //public bool IsDeleted { get; set; } = false;
+        //public DateTime? DeletedAt { get; set; }
     }
 }
 

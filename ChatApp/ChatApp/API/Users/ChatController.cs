@@ -61,7 +61,7 @@ namespace ChatApp.Controllers
 
             var currentUserId = Guid.Parse(userIdClaim);
 
-            // 🔥 find clear record for CURRENT USER
+            // 🔥 get clear record
             var clearRecord = await _context.UserChatClears
                 .FirstOrDefaultAsync(c =>
                     c.UserId == currentUserId &&
@@ -84,11 +84,16 @@ namespace ChatApp.Controllers
                     m.MessageId,
                     m.SenderId,
                     m.ReceiverId,
-                    MessageText = m.IsDeleted
+
+                    // 🔥 FIXED
+                    MessageText = m.Status == Domain.Enums.MessageStatus.Deleted
                         ? "This message was deleted"
                         : m.MessageText,
+
                     m.SentAt,
-                    m.IsDeleted
+
+                    // 🔥 send status to frontend
+                    Status = m.Status
                 })
                 .ToListAsync();
 

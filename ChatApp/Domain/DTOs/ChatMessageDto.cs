@@ -15,7 +15,7 @@ namespace Domain.DTOs
         public DateTime SentAt { get; set; }
 
         // 🔥 THIS
-        public string Status { get; set; }  // "Sent" | "Delivered" | "Read"
-    }
+        public string Status { get; set; }
 
+    }
 }

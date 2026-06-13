@@ -4,7 +4,24 @@ html, body {
   margin: 0;
   overflow: hidden;
 }
+.clear-btn {
+  padding: 8px 14px;
+  font-size: 12px;
+  border-radius: 10px;
 
+  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(255,255,255,0.08);
+  color: #e6e8ff;
+
+  transition: 0.2s ease;
+  cursor: pointer;
+}
+
+.clear-btn:hover {
+  background: linear-gradient(135deg, #ff6bdc, #5f6cff);
+  color: #fff;
+  border-color: transparent;
+}
 app-root {
   display: block;
   width: 100%;

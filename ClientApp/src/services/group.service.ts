@@ -18,6 +18,12 @@ export class GroupService {
       creatorId: localStorage.getItem('userId')
     });
   }
+  clearGroupChat(groupId: string) {
+  return this.http.post(
+    `http://localhost:5146/api/v1/GroupChat/clear/${groupId}`,
+    {}
+  );
+}
      
 //   addMember(groupId: string, us  erId: string) {
 //   return this.http.post(

@@ -88,41 +88,54 @@ export class GroupChat implements OnInit, OnDestroy {
 
   // ===== RECEIVE =====
   private handleIncoming(msg: any) {
-    // NORMAL MESSAGE
-msg.senderId = String(msg.senderId);
-    // 🔥 DELETE EVENT
-    if (msg.type === 'group-delete') {
 
-  const target = this.messages.find(m => m.messageId === msg.messageId);
+  // 🧹 CLEAR CHAT
+  if (msg.type === 'group-clear') {
 
-  if (target) {
-    target.isDeleted = true;
-    target.messageText = 'This message was deleted';
-  }
-console.log('INCOMING:', msg);
-  this.activeMenuId = null; // ✅ FORCE CLOSE MENU
-  this.cdr.detectChanges();
-  return;
-}
-
-    // 🔥 NORMAL MESSAGE
-    if (msg.groupId?.toString() !== this.groupId) return;
-
-    msg.senderId = String(msg.senderId);
-
-    const index = this.messages.findIndex(
-      m => m.clientTempId && m.clientTempId === msg.clientTempId
-    );
-
-    if (index !== -1) {
-      this.messages[index] = { ...msg, clientTempId: null };
-    } else {
-      this.messages.push(msg);
+    if (msg.groupId === this.groupId) {
+      this.messages = [];
+      this.cdr.detectChanges();
     }
 
-    this.cdr.detectChanges();
-    this.scrollToBottom();
+    return;
   }
+
+  // 🗑 DELETE MESSAGE
+  if (msg.type === 'group-delete') {
+
+    const target = this.messages.find(
+      m => m.messageId === msg.messageId
+    );
+
+    if (target) {
+      target.status = 1; // 🔥 FIX (Deleted)
+      target.messageText = 'This message was deleted';
+    }
+
+    this.activeMenuId = null;
+    this.cdr.detectChanges();
+    return;
+  }
+
+  // 📩 NORMAL MESSAGE
+  if (msg.groupId?.toString() !== this.groupId) return;
+
+  msg.senderId = String(msg.senderId);
+  msg.status = msg.status ?? 0; // 🔥 IMPORTANT
+
+  const index = this.messages.findIndex(
+    m => m.clientTempId && m.clientTempId === msg.clientTempId
+  );
+
+  if (index !== -1) {
+    this.messages[index] = { ...msg, clientTempId: null };
+  } else {
+    this.messages.push(msg);
+  }
+
+  this.cdr.detectChanges();
+  this.scrollToBottom();
+}
 
   // ===== SEND =====
   async send() {
@@ -132,14 +145,14 @@ console.log('INCOMING:', msg);
     const tempId = crypto.randomUUID();
 
     const tempMsg = {
-      clientTempId: tempId,
-      messageId: null,
-      senderId: this.senderId,
-      senderName: 'You',
-      messageText: text,
-      sentAt: new Date(),
-      isDeleted: false
-    };
+  clientTempId: tempId,
+  messageId: null,
+  senderId: this.senderId,
+  senderName: 'You',
+  messageText: text,
+  sentAt: new Date(),
+  status: 0 // 🔥 FIX (Normal)
+};
 
     this.messages.push(tempMsg); // ✅ NO ARRAY RECREATE
     this.scrollToBottom();
@@ -152,20 +165,21 @@ console.log('INCOMING:', msg);
 
   // ===== LOAD =====
   loadMessages() {
-    this.chat.getGroupHistory(this.groupId).subscribe({
-      next: msgs => {
-        this.messages = msgs.map(m => ({
-          ...m,
-          senderId: String(m.senderId)
-        }));
+  this.chat.getGroupHistory(this.groupId).subscribe({
+    next: msgs => {
+      this.messages = msgs.map(m => ({
+        ...m,
+        senderId: String(m.senderId),
+        status: m.status ?? 0 // 🔥 FIX
+      }));
 
-        this.isLoading = false;
-        this.cdr.detectChanges();
-        this.scrollToBottom();
-      },
-      error: () => (this.isLoading = false)
-    });
-  }
+      this.isLoading = false;
+      this.cdr.detectChanges();
+      this.scrollToBottom();
+    },
+    error: () => (this.isLoading = false)
+  });
+}
 
   loadMembers() {
     this.groupService.getGroupMembers(this.groupId).subscribe({
@@ -234,4 +248,19 @@ console.log('INCOMING:', msg);
       this.chat.leaveGroup(this.groupId);
     }
   }
+
+  clearChat() {
+  if (!this.groupId) return;
+
+  const ok = confirm('Clear all messages in this group?');
+  if (!ok) return;
+
+  // ✅ UI clear
+  this.messages = [];
+  this.cdr.detectChanges();
+
+  // ✅ SAVE TO DB (IMPORTANT)
+  this.groupService.clearGroupChat(this.groupId).subscribe();
+}
+
 }

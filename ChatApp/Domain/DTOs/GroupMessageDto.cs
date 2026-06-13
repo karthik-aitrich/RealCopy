@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Domain.Enums;
 
 namespace Domain.DTOs
 {
@@ -16,7 +17,7 @@ namespace Domain.DTOs
         public string MessageText { get; set; } = string.Empty;
         public DateTime SentAt { get; set; }
 
-        public bool IsDeleted { get; set; }   // 🔥 ADD THIS
+        public MessageStatus Status { get; set; }   // 🔥 ADD THIS
         public string? ClientTempId { get; set; }
     }
 

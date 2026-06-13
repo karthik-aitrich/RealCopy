@@ -1,9 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using System.ComponentModel.DataAnnotations;
+using Domain.Enums;
 using Domain.Models;
 
 public class GroupMessage
@@ -19,7 +20,7 @@ public class GroupMessage
 
     // 🔥 ADD THIS
     public User Sender { get; set; } = null!;
-    public bool IsDeleted { get; set; } = false;
+    public MessageStatus Status { get; set; } = MessageStatus.Normal;
 
     public ICollection<GroupMessageSeen> SeenBy { get; set; }
 }

@@ -29,12 +29,21 @@
       placeholder="Password"
     />
 
-    <button
+
+<button
+  class="auth-btn"
+  (click)="login()"
+  [disabled]="!email || !password || isLoading">
+
+  {{ isLoading ? 'Logging in...' : 'Login' }}
+
+</button>
+    <!-- <button
   class="auth-btn"
   (click)="login()"
   [disabled]="!email || !password">
   Login
-</button>
+</button> -->
   
 <div class="footer-text footer-actions">
   <span>

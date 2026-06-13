@@ -20,6 +20,7 @@ namespace ChatApp.Data
         public DbSet<GroupMessageSeen> GroupMessageSeens { get; set; }
 
         //public DbSet<group>
+        public DbSet<GroupChatClear> GroupChatClears { get; set; }
         public DbSet<GroupMessage> GroupMessages { get; set; }
     }
 }

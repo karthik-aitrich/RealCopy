@@ -39,8 +39,10 @@
     <button
   class="auth-btn"
   (click)="register()"
-  [disabled]="!userName || !email || !password">
-  Register
+  [disabled]="!userName || !email || !password || isLoading">
+
+  {{ isLoading ? 'Registering...' : 'Register' }}
+
 </button>
 
     <p class="footer-text">

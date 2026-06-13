@@ -270,7 +270,20 @@ namespace ChatApp.Hubs
                     messageId = deleted.GroupMessageId // ✅ FIX
                 });
         }
+        public async Task ClearGroupChat(Guid groupId)
+        {
+            var userId = GetUserId();
+            if (userId == Guid.Empty) return;
 
+            await _groupChatService.ClearGroupChatAsync(groupId, userId);
+
+            // 🔥 notify ALL group users
+            await Clients.Group(groupId.ToString())
+                .SendAsync("GroupChatCleared", new
+                {
+                    groupId = groupId
+                });
+        }
 
 
 

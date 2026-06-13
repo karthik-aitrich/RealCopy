@@ -2,32 +2,41 @@
 
   <!-- HEADER -->
   <div class="chat-header">
+
     <div class="header-left">
       <div class="name">{{ groupName }}</div>
       <div class="status">{{ membersCount }} members</div>
     </div>
 
-    <button class="info-btn" (click)="openGroupInfo()">ℹ</button>
+    <div class="header-actions">
+      <button class="clear-btn" (click)="clearChat()">
+        Clear Chat
+      </button>
+
+      <button class="info-btn" (click)="openGroupInfo()">
+        ℹ
+      </button>
+    </div>
+
   </div>
 
   <!-- BODY -->
   <div #chatBody class="chat-body">
 
-    <div *ngIf="isLoading" class="loading">Loading...</div>
+    <div *ngIf="isLoading" class="loading">
+      Loading...
+    </div>
 
     <div *ngFor="let msg of messages; trackBy: trackByMessage"
          class="message-row"
-         [ngClass]="isMine(msg) ? 'me' : 'other'">
+         [class.me]="isMine(msg)"
+         [class.other]="!isMine(msg)">
 
       <div class="bubble">
-        <!-- 🔥 DEBUG (ADD THIS) -->
-    <!-- <div style="color:red; font-size:10px;">
-      msg: {{ msg.senderId }} <br>
-      me: {{ senderId }}
-    </div> -->
+
         <!-- OPTIONS -->
         <div class="options"
-             *ngIf="isMine(msg) && (msg.messageId || msg.clientTempId)">
+             *ngIf="isMine(msg) && (msg.status ?? 0) !== 1 && (msg.messageId || msg.clientTempId)">
 
           <button class="dots"
                   (click)="toggleMenu(getMenuKey(msg)); $event.stopPropagation()">
@@ -45,19 +54,22 @@
           </div>
         </div>
 
-        <!-- SENDER -->
-        <div *ngIf="msg.senderId !== senderId"
-             class="sender-name">
-          {{ msg.senderName }}
+        <!-- SENDER NAME -->
+        <div *ngIf="!isMine(msg)" class="sender-name">
+          {{ msg.senderName || 'Unknown' }}
         </div>
 
-        <!-- TEXT -->
+        <!-- MESSAGE -->
         <div class="text"
-             [ngClass]="{ deleted: msg.isDeleted }">
+             [class.deleted]="(msg.status ?? 0) === 1">
 
-          {{ msg.isDeleted
-              ? 'This message was deleted'
-              : msg.messageText }}
+          <ng-container *ngIf="(msg.status ?? 0) === 1; else normalMsg">
+            This message was deleted
+          </ng-container>
+
+          <ng-template #normalMsg>
+            {{ msg.messageText }}
+          </ng-template>
 
         </div>
 
@@ -67,6 +79,7 @@
         </div>
 
       </div>
+
     </div>
 
   </div>
@@ -80,7 +93,9 @@
       (keydown.enter)="$event.preventDefault(); send()"
     />
 
-    <button type="button" (click)="send()">➤</button>
+    <button type="button" (click)="send()">
+      ➤
+    </button>
 
   </div>
 
