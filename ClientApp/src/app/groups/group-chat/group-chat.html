@@ -70,18 +70,26 @@
     </div>
 
   </div>
+<div class="not-member" *ngIf="!isMember">
+  You are not a member of this group.
+</div>
+ <!-- INPUT -->
+<div class="chat-input">
 
-  <!-- INPUT -->
-  <div class="chat-input">
+  <input
+    [(ngModel)]="message"
+    placeholder="Type a message..."
+    [disabled]="!isMember"
+    (keydown.enter)="$event.preventDefault(); send()"
+  />
 
-    <input
-      [(ngModel)]="message"
-      placeholder="Type a message..."
-      (keydown.enter)="$event.preventDefault(); send()"
-    />
+  <button
+    type="button"
+    (click)="send()"
+    [disabled]="!isMember">
+    ➤
+  </button>
 
-    <button type="button" (click)="send()">➤</button>
-
-  </div>
+</div>
 
 </div>

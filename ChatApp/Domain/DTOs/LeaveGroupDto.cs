@@ -8,7 +8,7 @@ namespace Domain.DTOs
 {
     public class LeaveGroupDto
     {
-        public Guid GroupId { get; set; }
+   
         public Guid UserId { get; set; }
     }
 }

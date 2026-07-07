@@ -49,12 +49,31 @@ namespace ChatApp.Repositories
             await _context.SaveChangesAsync();
         }
 
-        public async Task<IEnumerable<GroupMessage>> GetGroupMessagesAsync(Guid groupId)
+        public async Task<IEnumerable<GroupMessage>> GetGroupMessagesAsync(Guid groupId,Guid UserId)
         {
-            return await _context.GroupMessages
-                .Where(m => m.GroupId == groupId)
-                .OrderBy(m => m.SentAt)   // 🔥 CRITICAL
-                .ToListAsync();
+
+			var membership = await _context.GroupMembers
+	.FirstOrDefaultAsync(x =>
+		x.GroupId == groupId &&
+
+		x.UserId == UserId);
+			if (membership == null)
+				return new List<GroupMessage>();
+
+
+			var query = _context.GroupMessages
+				.Where(m => m.GroupId == groupId &&
+							m.SentAt >= membership.JoinedAt);
+			// If the user has been removed, only show messages up to the removal time
+			if (membership.removedAt != null)
+			{
+				query = query.Where(m => m.SentAt <= membership.removedAt);
+			}
+			return await query
+		   .OrderBy(m => m.SentAt)
+		   .ToListAsync();
+
+			
         }
 
         public async Task AddMemberAsync(GroupMember member)
@@ -64,8 +83,11 @@ namespace ChatApp.Repositories
         }
 
         public async Task<List<GroupMember>> GetGroupMembersAsync(Guid groupId)
+
         {
-            return await _context.GroupMembers
+	
+
+			return await _context.GroupMembers
                 .Where(g => g.GroupId == groupId)
                 .ToListAsync();
         }

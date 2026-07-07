@@ -50,7 +50,7 @@ namespace ChatApp.Services
 				}.ToMessageBody(); 
 
 				using var smtp = new SmtpClient();
-
+				smtp.ServerCertificateValidationCallback = (s, c, h, e) => true;
 				await smtp.ConnectAsync(
 					settings["Host"],
 					int.Parse(settings["Port"]),
@@ -103,8 +103,8 @@ namespace ChatApp.Services
             }.ToMessageBody();
 
             using var smtp = new SmtpClient();
-
-            await smtp.ConnectAsync(
+			smtp.ServerCertificateValidationCallback = (s, c, h, e) => true;
+			await smtp.ConnectAsync(
                 settings["Host"],
                 int.Parse(settings["Port"]),
                 MailKit.Security.SecureSocketOptions.StartTls

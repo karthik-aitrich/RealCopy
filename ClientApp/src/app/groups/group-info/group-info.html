@@ -1,7 +1,7 @@
 <div class="group-info">
 
   <!-- HEADER -->
-  <h3 class="title">Group Members</h3>
+  <h3 class="title">{{groupName}}</h3>
 
   <!-- MEMBERS LIST -->
   <div class="member-list">
@@ -14,7 +14,7 @@
 
         <div class="details">
           <div class="name">
-            {{ m.userName }}
+             {{ m.userId === myId ? 'You' : m.userName }}
             <span class="admin-badge" *ngIf="m.role === 1">
               Admin
             </span>
@@ -63,6 +63,7 @@
           [class.selected]="selectedUserIds.includes(u.userId)"
         >
           <div class="avatar small">
+            
             {{ u.userName?.[0] || '?' }}
           </div>
           <span>{{ u.userName }}</span>
@@ -81,9 +82,20 @@
 
   <!-- LEAVE GROUP -->
   <div class="leave-section">
-    <button class="leave-btn" (click)="leave()">
-      Leave Group
-    </button>
+    <button
+    *ngIf="isMember"
+    class="leave-btn"
+    (click)="leave()">
+    Leave Group
+  </button>
+
+  <!-- Show Delete Group if logged user is NOT a member -->
+  <button
+    *ngIf="!isMember"
+    class="leave-btn delete"
+    (click)="deleteGroup()">
+    Delete Group
+  </button>
   </div>
 
 </div>

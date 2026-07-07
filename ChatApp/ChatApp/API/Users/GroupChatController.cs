@@ -15,7 +15,8 @@ public class GroupChatController : BaseAPIController<GroupChatController>
     [HttpGet("group/{groupId}")]
     public async Task<IActionResult> GetGroupMessages(Guid groupId)
     {
-        return Ok(await _service.GetGroupMessagesAsync(groupId));
+		var userId = Guid.Parse(User.FindFirst("userId")?.Value);
+		return Ok(await _service.GetGroupMessagesAsync(groupId, userId));
     }
 
     [HttpPost("group/add-member")]

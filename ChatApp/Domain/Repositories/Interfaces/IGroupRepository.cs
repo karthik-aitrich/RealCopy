@@ -22,8 +22,9 @@ namespace Domain.Repositories.Interfaces
         Task ChangeRoleAsync(Guid groupId, Guid userId, GroupRoleEnum role);
         Task<List<GroupMemberDto>> GetGroupMembersAsync(Guid groupId);
 
+        Task DeleteGroup(Guid groupId, Guid userId);
 
-    }
+	}
 
 
 }

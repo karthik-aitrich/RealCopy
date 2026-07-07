@@ -1,10 +1,11 @@
-﻿using System;
+﻿using AutoMapper.Execution;
 using ChatApp.Data;
 using Domain.DTOs;
 using Domain.Enums;
 using Domain.Models;
 using Domain.Repositories.Interfaces;
 using Microsoft.EntityFrameworkCore;
+using System;
 
 namespace ChatApp.Repositories
 {
@@ -56,38 +57,60 @@ namespace ChatApp.Repositories
 
         public async Task AddMemberAsync(Guid groupId, Guid userId, Guid adminId)
         {
-            var isAdmin = await _db.GroupMembers.AnyAsync(m =>
-                m.GroupId == groupId &&
-                m.UserId == adminId &&
-                m.Role == GroupRoleEnum.Admin
-            );
-
-            if (!isAdmin)
-                throw new Exception("Only admins can add members");
-
-            if (await _db.GroupMembers.AnyAsync(m =>
-                m.GroupId == groupId && m.UserId == userId))
-                throw new Exception("User already in group");
-
-            _db.GroupMembers.Add(new GroupMember
-            {
-                GroupMemberId = Guid.NewGuid(),
-                GroupId = groupId,
-                UserId = userId,
-                Role = GroupRoleEnum.Member,
-                JoinedAt = DateTime.UtcNow
-            });
-
-            await _db.SaveChangesAsync();
-        }
-
-
-        public async Task RemoveMemberAsync(Guid groupId, Guid userId, Guid adminId)
-        {
             var admin = await _db.GroupMembers
                 .FirstOrDefaultAsync(m => m.GroupId == groupId
                                        && m.UserId == adminId
                                        && m.Role == GroupRoleEnum.Admin);
+            if (admin == null)
+                throw new Exception("Only admins can add members");
+			var member = await _db.GroupMembers
+		 .FirstOrDefaultAsync(m =>
+			 m.GroupId == groupId &&
+			 m.UserId == userId);
+            if (member != null)
+            {
+               
+                if (member.Ismember == UsergroupStatus.Active)
+                {
+                    throw new Exception("User already in group");
+                }
+                else
+                {
+                    member.Ismember = (int)UsergroupStatus.Active;
+                    member.JoinedAt = DateTime.UtcNow;
+                    _db.GroupMembers.Update(member);
+                    await _db.SaveChangesAsync();
+                }
+            }
+            else {
+				_db.GroupMembers.Add(new GroupMember
+				{
+					GroupMemberId = Guid.NewGuid(),
+					GroupId = groupId,
+					UserId = userId,
+					Role = GroupRoleEnum.Member,
+					JoinedAt = DateTime.UtcNow,
+                    Ismember = (int)UsergroupStatus.Active  
+				});
+				await _db.SaveChangesAsync();
+			}
+    }
+
+
+        public async Task RemoveMemberAsync(Guid groupId, Guid userId, Guid adminId)
+        {
+            var permittedUser= await _db.GroupMembers
+                .FirstOrDefaultAsync(m => m.GroupId == groupId
+                                       && m.UserId == adminId
+                                       && m.Ismember==UsergroupStatus.Active);
+            if (permittedUser == null)
+            {
+				throw new Exception("Not a Member of this group");
+			}
+				var admin = await _db.GroupMembers
+                .FirstOrDefaultAsync(m => m.GroupId == groupId
+                                       && m.UserId == adminId
+                                       && m.Role == GroupRoleEnum.Admin && m.Ismember==UsergroupStatus.Active);
 
             if (admin == null)
                 throw new Exception("Only admins can remove members");
@@ -102,27 +125,63 @@ namespace ChatApp.Repositories
 
             if (member.Role == GroupRoleEnum.Admin && adminCount == 1)
                 throw new Exception("Cannot remove last admin");
+            member.Ismember = UsergroupStatus.removedmember;
+            member.removedAt = DateTime.UtcNow; 
 
-            _db.GroupMembers.Remove(member);
+
+			_db.GroupMembers.Update(member);
             await _db.SaveChangesAsync();
         }
 
-
+        public async Task DeleteGroup(Guid groupId,Guid UserId)
+        {
+            var groupMember= await _db.GroupMembers.Where(e=>e.GroupId==groupId && e.UserId==UserId).FirstOrDefaultAsync();
+            if (groupMember != null)
+            {
+                _db.GroupMembers.Remove(groupMember);
+                await _db.SaveChangesAsync();
+            }
+        }
         public async Task LeaveGroupAsync(Guid groupId, Guid userId)
         {
             var member = await _db.GroupMembers
-                .FirstOrDefaultAsync(m => m.GroupId == groupId && m.UserId == userId);
+                .FirstOrDefaultAsync(m => m.GroupId == groupId && m.UserId == userId && m.Ismember==(int)UsergroupStatus.Active);
 
             if (member == null) return;
 
             var adminCount = await _db.GroupMembers
                 .CountAsync(m => m.GroupId == groupId && m.Role == GroupRoleEnum.Admin);
+			var MemberCount = await _db.GroupMembers
+			  .CountAsync(m => m.GroupId == groupId && m.Ismember==UsergroupStatus.Active);
+			if (member.Role == GroupRoleEnum.Admin && adminCount == 1 )
+            {
+                if(MemberCount>1)
+                {
+					throw new Exception("Assign another admin first");
+				}
+                else
+				{
+					member.Ismember = UsergroupStatus.removedmember;
+					member.removedAt = DateTime.UtcNow;
 
-            if (member.Role == GroupRoleEnum.Admin && adminCount == 1)
-                throw new Exception("Assign another admin first");
 
-            _db.GroupMembers.Remove(member);
-            await _db.SaveChangesAsync();
+					_db.GroupMembers.Update(member);
+					await _db.SaveChangesAsync();
+				}
+            }
+            else
+            {
+				member.Ismember = UsergroupStatus.removedmember;
+				member.removedAt = DateTime.UtcNow;
+
+
+				_db.GroupMembers.Update(member);
+				await _db.SaveChangesAsync();
+			}
+                
+       
+
+          
         }
 
         public async Task ChangeRoleAsync(Guid groupId, Guid userId, GroupRoleEnum role)
@@ -139,7 +198,7 @@ namespace ChatApp.Repositories
         public async Task<List<GroupMemberDto>> GetGroupMembersAsync(Guid groupId)
         {
             return await _db.GroupMembers
-                .Where(gm => gm.GroupId == groupId)
+                .Where(gm => gm.GroupId == groupId && gm.Ismember==(int)UsergroupStatus.Active)
                 .Join(_db.Users,
                       gm => gm.UserId,
                       u => u.UserId,

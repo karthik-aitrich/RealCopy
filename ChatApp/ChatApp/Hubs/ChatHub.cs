@@ -15,12 +15,14 @@ namespace ChatApp.Hubs
         private readonly IChatService _chatService;
         private readonly IGroupChatService _groupChatService;
         private readonly IUserService _userService;
+        private readonly IGroupService _groupService;
 
-        public ChatHub(IChatService chatService, IGroupChatService groupChatService, IUserService userService)
+		public ChatHub(IChatService chatService, IGroupChatService groupChatService, IUserService userService, IGroupService groupService)
         {
             _chatService = chatService;
             _groupChatService = groupChatService;
             _userService = userService;
+            _groupService = groupService;
         }
 
         public async Task SendGroupMessage(Guid groupId, string message, string clientTempId)
@@ -130,10 +132,33 @@ namespace ChatApp.Hubs
 
         public async Task LeaveGroup(Guid groupId)
         {
-            await Groups.RemoveFromGroupAsync(Context.ConnectionId, groupId.ToString());
-        }
+			await Groups.RemoveFromGroupAsync(
+		 Context.ConnectionId,
+		 groupId.ToString());
+		}
+		public async Task RemoveMember(Guid groupId, Guid removedUserId,Guid adminId)
+		{
+			// Remove from DB
+			await _groupService.RemoveMemberAsync(
+				groupId,
+				removedUserId,adminId);
 
-        private Guid GetUserId()
+			// Remove all active connections of that user
+			var connections =
+				UserConnectionManager.GetConnections(removedUserId);
+
+			foreach (var connectionId in connections)
+			{
+				await Groups.RemoveFromGroupAsync(
+					connectionId,
+					groupId.ToString());
+			}
+
+			// Notify the removed user
+			await Clients.User(removedUserId.ToString())
+				.SendAsync("RemovedFromGroup", groupId);
+		}
+		private Guid GetUserId()
         {
             var claim = Context.User?
                 .FindFirst(ClaimTypes.NameIdentifier)?.Value;
@@ -272,7 +297,7 @@ namespace ChatApp.Hubs
         }
 
 
+		
 
-
-    }
+	}
 }

@@ -10,7 +10,7 @@ namespace Domain.Repositories.Interfaces
         Task<bool> HasUserSeenMessageAsync(Guid messageId, Guid userId);
         Task AddMessageSeenAsync(GroupMessageSeen seen);
 
-        Task<IEnumerable<GroupMessage>> GetGroupMessagesAsync(Guid groupId);
+        Task<IEnumerable<GroupMessage>> GetGroupMessagesAsync(Guid groupId, Guid userId);
 
         Task AddMemberAsync(GroupMember member);
         Task<List<GroupMember>> GetGroupMembersAsync(Guid groupId);

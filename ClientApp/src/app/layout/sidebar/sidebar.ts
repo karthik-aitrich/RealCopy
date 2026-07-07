@@ -1,12 +1,12 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectorRef} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, ActivatedRoute, NavigationEnd } from '@angular/router';
 import { GroupService } from '../../../services/group.service';
 import { Subscription } from 'rxjs';
 import { filter } from 'rxjs/operators';
-import { ChatService } from '../../../services/chat.service';
 import { GroupStateService } from '../../../services/GroupStateService ';
-
+import { ChatService } from '../../../services/chat.service';
+import { NgZone } from '@angular/core';
 @Component({
   selector: 'app-sidebar',
   standalone: true,
@@ -19,8 +19,6 @@ export class Sidebar implements OnInit, OnDestroy {
   users: any[] = [];
   groups: any[] = [];
   activeTab: 'chats' | 'groups' = 'chats';
-private statusSub?: Subscription;
-private onlineSub?: Subscription;
 
   showSettings = false;
 
@@ -31,15 +29,15 @@ private onlineSub?: Subscription;
     private groupService: GroupService,
     private router: Router,
     private groupState: GroupStateService,
-    private chatService: ChatService
+    private chat: ChatService,
+      private zone: NgZone,
+        private cdr: ChangeDetectorRef
   ) {}
 
   // ===============================
   // INIT
   // ===============================
-  ngOnInit(): void {
-    this.chatService.startConnection();
-
+  async ngOnInit(): Promise<void> {
   console.log('Sidebar INIT');
 
   // 1️⃣ Load users from resolver
@@ -49,21 +47,6 @@ private onlineSub?: Subscription;
   this.users = resolvedUsers.filter(
     (u: any) => u.userId !== currentUserId
   );
-  this.onlineSub = this.chatService.onlineUsers$.subscribe((onlineIds: string[]) => {
-  this.users.forEach(user => {
-    user.isOnline = onlineIds.includes(user.userId);
-  });
-});
-
-this.statusSub = new Subscription();
-this.chatService.onUserStatusChanged((data: any) => {
-  const user = this.users.find(u => u.userId === data.UserId);
-  if (user) {
-    user.isOnline = data.IsOnline;
-  }
-});
-
-
 
   // 2️⃣ Initial groups load
   this.loadGroups();
@@ -80,23 +63,83 @@ this.chatService.onUserStatusChanged((data: any) => {
     .subscribe(() => {
       this.loadGroups();
     });
+   await this.chat.startConnection();
+
+// RemovedFromGroup
+this.chat.hubConnection.on(
+  'RemovedFromGroup',
+  (groupId: string) => {
+
+    console.log('RemovedFromGroup received:', groupId);
+
+   
+  }
+);
+this.chat.hubConnection.on(
+  'AddedToGroup',
+  () => {
+    console.log('AddedToGroup received****************');
+
+    this.zone.run(() => {
+      this.loadGroups();
+    });
+  }
+);
+// GroupDeleted
+this.chat.hubConnection.on(
+  'GroupDeleted',
+  (groupId: string) => {
+
+    console.log('GroupDeleted received:', groupId);
+
+    this.zone.run(() => {
+      this.groups = this.groups.filter(
+        g => g.groupId !== groupId
+        
+      );
+       this.cdr.detectChanges();
+      
+    });
+  }
+);
+this.chat.hubConnection.on(
+  'GroupCreated',
+  (group: any) => {
+
+    this.zone.run(() => {
+
+      const exists = this.groups.some(
+        g => g.groupId === group.groupId
+      );
+
+      if (!exists) {
+        this.groups.push(group);
+              this.cdr.detectChanges();
+      }
+    });
+  }
+);
 }
 
 
   // ===============================
   // LOAD GROUPS
   // ===============================
-  loadGroups() {
-    this.groupService.getMyGroups().subscribe({
-      next: groups => {
-        this.groups = groups;
-      },
-      error: err => {
-        console.error('LOAD GROUPS ERROR', err);
-      }
-    });
-  }
+ loadGroups() {
+  this.groupService.getMyGroups().subscribe({
+    next: groups => {
 
+      console.log('Groups from API:', groups);
+
+      this.groups = groups;
+
+      this.cdr.detectChanges();
+    },
+    error: err => {
+      console.error(err);
+    }
+  });
+}
   // ===============================
   // SETTINGS
   // ===============================
@@ -124,10 +167,13 @@ this.chatService.onUserStatusChanged((data: any) => {
 
   
   openGroup(group: any) {
+    console.log(group.groupId)
     this.router.navigate(
       ['/app/group', group.groupId],
+      
       { state: { groupName: group.groupName } }
     );
+    
   }
 
   createNewGroup() {
@@ -149,9 +195,11 @@ this.chatService.onUserStatusChanged((data: any) => {
   // CLEANUP
   // ===============================
   ngOnDestroy(): void {
-  this.routerSub?.unsubscribe();
-  this.statusSub?.unsubscribe();
-  this.onlineSub?.unsubscribe();
-}
+    this.routerSub?.unsubscribe();
 
+  this.chat.hubConnection.off('AddedToGroup');
+  this.chat.hubConnection.off('RemovedFromGroup');
+  this.chat.hubConnection.off('GroupDeleted');
+  this.chat.hubConnection.off('GroupCreated');
+  }
 }

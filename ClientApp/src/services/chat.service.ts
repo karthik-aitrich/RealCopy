@@ -8,7 +8,7 @@
   @Injectable({ providedIn: 'root' })
   export class ChatService {
 
-    private hubConnection!: signalR.HubConnection;
+    public hubConnection!: signalR.HubConnection;
     private connectionPromise?: Promise<void>;
 
     private readonly hubUrl = 'http://localhost:5146/chatHub';
@@ -84,6 +84,7 @@
       );
     });
 
+    
     this.registerReceiveMessage();
     this.startHeartbeat();
 
@@ -295,7 +296,7 @@ clearGroupChat(groupId: string) {
   clientTempId: string
 ): Promise<void> {
   await this.startConnection();
-
+console.log('connection established')
   return this.hubConnection.invoke(
     'SendGroupMessage',
     groupId,

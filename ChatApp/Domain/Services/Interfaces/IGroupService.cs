@@ -16,11 +16,13 @@ namespace Domain.Services.Interfaces
         Task AddMemberAsync(Guid groupId, Guid userId, Guid adminId);   
         Task RemoveMemberAsync(Guid groupId, Guid userId, Guid adminId);
 
-        Task<Guid> CreateGroupAsync(Guid creatorId, CreateGroupDto dto);
+        Task<GroupDTO> CreateGroupAsync(Guid creatorId, CreateGroupDto dto);
 
         Task LeaveGroupAsync(Guid groupId, Guid userId);
         Task ChangeRoleAsync(Guid groupId, Guid userId, int role);
-        Task<List<GroupMemberDto>> GetGroupMembersAsync(Guid groupId);
+        Task DeleteGroup(Guid groupId, Guid UserId);
+
+		Task<List<GroupMemberDto>> GetGroupMembersAsync(Guid groupId);
     }
 
 }

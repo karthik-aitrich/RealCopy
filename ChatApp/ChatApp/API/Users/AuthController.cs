@@ -34,7 +34,7 @@ namespace ChatApp.Controllers
         }
 
         // POST: api/v1/auth/register
-        [HttpPost("register")]
+        [HttpPost("users")]
         public async Task<IActionResult> Register(RegisterDto dto)
         {
             var exists = await _context.Users.AnyAsync(u => u.Email == dto.Email);
@@ -81,7 +81,7 @@ namespace ChatApp.Controllers
 
 
 
-        [HttpPost("verify-otp")]
+        [HttpPost("otp-verifications")]
 		public async Task<IActionResult> VerifyOtp([FromForm] VerifyOtpDto dto)
         {
 			bool isValid = await _authService.verifyOtp(dto.Email, dto.Otp);
@@ -93,7 +93,7 @@ namespace ChatApp.Controllers
 		}
 
         
-        [HttpPost("confirm")]
+        [HttpPost("account-verifications")]
         public async Task<IActionResult> ConfirmAccount([FromForm] ConfirmDTo dto)
         {
             string? photoUrl = null;
@@ -140,7 +140,7 @@ namespace ChatApp.Controllers
 
 
         [Authorize]
-        [HttpPost("logout")]
+        [HttpPost("sessions/logout")]
         public async Task<IActionResult> Logout()
         {
             var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
@@ -152,7 +152,7 @@ namespace ChatApp.Controllers
 
 
         // POST: api/v1/auth/login
-        [HttpPost("login")]
+        [HttpPost("sessions")]
 
         public async Task<IActionResult> Login(LoginDto dto)
         {
@@ -181,7 +181,7 @@ namespace ChatApp.Controllers
         }
 
         [Authorize]
-        [HttpPost("change-password")]
+        [HttpPut("users/password")]
         public async Task<IActionResult> ChangePassword(ChangePasswordDto dto)
         {
             var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
@@ -204,7 +204,7 @@ namespace ChatApp.Controllers
 
 
 
-        [HttpPost("forgot-password")]
+        [HttpPost("password-reset-requests")]
         public async Task<IActionResult> ForgotPassword(ForgotPasswordDto dto)
         {
             var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == dto.Email);
@@ -228,7 +228,7 @@ namespace ChatApp.Controllers
 
 
 
-        [HttpPost("reset-password")]
+        [HttpPost("password-resets")]
         public async Task<IActionResult> ResetPassword(ResetPasswordDto dto)
         {
             var user = await _context.Users.FirstOrDefaultAsync(u =>

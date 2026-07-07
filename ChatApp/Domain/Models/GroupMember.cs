@@ -17,6 +17,9 @@ public class GroupMember
     public Guid UserId { get; set; }
     public GroupRoleEnum Role { get; set; }
     public DateTime JoinedAt { get; set; }
+    public UsergroupStatus Ismember { get; set; }
+    public DateTime? removedAt { get; set; }
+
 }
 
 

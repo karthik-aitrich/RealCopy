@@ -1,17 +1,22 @@
-﻿using Domain.DTOs;
+﻿using ChatApp.Hubs;
+using Domain.DTOs;
 using Domain.Enums;
 using Domain.Models;
 using Domain.Repositories.Interfaces;
 using Domain.Services.Interfaces;
+using Microsoft.AspNetCore.SignalR;
 
 public class GroupService : IGroupService
 {
     private readonly IGroupRepository _repo;
+	private readonly IHubContext<ChatHub> _hubContext;
 
-    public GroupService(IGroupRepository repo)
+	public GroupService(IGroupRepository repo, IHubContext<ChatHub> hubContext)
     { 
         _repo = repo;
-    }
+		_hubContext = hubContext;
+
+	}
 
     public async Task CreateGroupAsync(string name, Guid creatorId)
     {
@@ -23,7 +28,7 @@ public class GroupService : IGroupService
         return await _repo.GetUserGroupsAsync(userId); 
     }
 
-    public async Task<Guid> CreateGroupAsync(Guid creatorId, CreateGroupDto dto)
+    public async Task<GroupDTO> CreateGroupAsync(Guid creatorId, CreateGroupDto dto)
     {
         var members = dto.MemberIds
             .Append(creatorId)
@@ -34,15 +39,26 @@ public class GroupService : IGroupService
             throw new Exception("A group must have at least 3 members");
          
         var groupId = await _repo.CreateGroupAsync(dto.Name, creatorId);
+		var groupDto = new GroupDTO
+		{
+			GroupId = groupId,
+			GroupName = dto.Name,
+			MemberIds = members
+		};
 
-        foreach (var userId in members)
+		foreach (var userId in members)
         {
             if (userId == creatorId) continue;
             await _repo.AddMemberAsync(groupId, userId, creatorId);
 
         }
 
-        return groupId;
+		// Notify all group members
+		await _hubContext.Clients
+			.Users(members.Select(x => x.ToString()))
+			.SendAsync("GroupCreated", groupDto);
+
+		return groupDto;
     }
 
      
@@ -72,5 +88,11 @@ public class GroupService : IGroupService
         return await _repo.GetGroupMembersAsync(groupId);
     }
 
-
+	public async Task DeleteGroup(Guid groupId, Guid UserId)
+    {
+        await _repo.DeleteGroup(groupId, UserId);
+		await _hubContext.Clients
+	.User(UserId.ToString())
+	.SendAsync("GroupDeleted", groupId);
+	}
 }

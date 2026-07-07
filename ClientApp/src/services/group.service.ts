@@ -13,7 +13,7 @@ export class GroupService {
   // CREATE GROUP
   // ===============================
   createGroup(name: string): Observable<any> {
-    return this.http.post<any>(`${this.baseUrl}/create`, {
+    return this.http.post<any>(`${this.baseUrl}/groups`, {
       name,
       creatorId: localStorage.getItem('userId')
     });
@@ -36,7 +36,7 @@ getAllUsers() {
     memberIds: string[]
   ): Observable<any> {
     return this.http.post<any>(
-      `${this.baseUrl}/create-with-members`,
+      `${this.baseUrl}/groups-with-members`,
       { name, memberIds }
     );
   }
@@ -47,7 +47,8 @@ getAllUsers() {
   getMyGroups(): Observable<any[]> {
     const userId = localStorage.getItem('userId');
     return this.http.get<any[]>(
-      `${this.baseUrl}/user/${userId}`
+      `${this.baseUrl}/users/${userId}/groups`
+      
     );
   }
 
@@ -63,41 +64,37 @@ getAllUsers() {
   // ===============================
   // MEMBER MANAGEMENT
   // ===============================
-addMember(dto: { groupId: string; userId: string }) {
+addMember(groupId: string, userId: string) {
   return this.http.post(
-    `${this.baseUrl}/add-member`,
-    dto
+    `${this.baseUrl}/${groupId}/members`,
+    { userId }
   );
 }
 
 
 
-
   removeMember(groupId: string, userId: string): Observable<any> {
-    return this.http.post<any>(`${this.baseUrl}/remove-member`, {
-      groupId,
-      userId,
-      adminId: localStorage.getItem('userId')
-    });
+   return this.http.delete(
+  `${this.baseUrl}/${groupId}/members/${userId}`
+);
   }
-
+deleteGroup(groupId: string) {
+    console.log (groupId)
+  return this.http.delete(
+    `${this.baseUrl}/${groupId}`
+  );
+}
   changeRole(
     groupId: string,
     userId: string,
     role: number
   ): Observable<any> {
-    return this.http.post<any>(`${this.baseUrl}/change-role`, {
-      groupId,
-      userId,
-      role
-    });
+    return this.http.patch<any>(`${this.baseUrl}/${groupId}/members/${userId}?role=${role}`, {});
   }
 
   leaveGroup(groupId: string): Observable<any> {
-    return this.http.post<any>(`${this.baseUrl}/leave`, {
-      groupId,
-      userId: localStorage.getItem('userId')
-    });
+    return this.http.delete<any>(`${this.baseUrl}/${groupId}/members/me`, 
+       );
   }
 
   // ===============================
@@ -109,3 +106,4 @@ addMember(dto: { groupId: string; userId: string }) {
     );
   }
 }
+

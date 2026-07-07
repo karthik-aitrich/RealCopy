@@ -27,7 +27,7 @@ export class AuthService {
 
 login(email: string, password: string) {
   return this.http
-    .post<LoginResponse>(`${this.baseUrl}/login`, { email, password })
+    .post<LoginResponse>(`${this.baseUrl}/sessions`, { email, password })
     .pipe(
       tap((res: LoginResponse) => {
         localStorage.setItem('token', res.token);
@@ -47,7 +47,7 @@ getMe() {
 
   register(userName: string, email: string, password: string) {
   return this.http.post(
-    `${this.baseUrl}/register`,
+    `${this.baseUrl}/users`,
     { userName, email, password },
     { responseType: 'text' } // 🔥 REQUIRED
   );
@@ -55,7 +55,7 @@ getMe() {
 
 
 logout() {
-  return this.http.post(`${this.baseUrl}/logout`, {});
+  return this.http.post(`${this.baseUrl}/sessions/logout`, {});
 }
 
 setAuthSession(res: any) {
@@ -76,7 +76,7 @@ changePassword(data: {
   newPassword: string;
 }) {
   return this.http.post(
-    `${this.baseUrl}/change-password`,
+    `${this.baseUrl}/users/password`,
     data
   );
 }
@@ -84,14 +84,14 @@ changePassword(data: {
 
 forgotPassword(email: string) {
   return this.http.post(
-    `${this.baseUrl}/forgot-password`,
+    `${this.baseUrl}/password-reset-requests`,
     { email }
   );
 }
 
 resetPassword(token: string, newPassword: string) {
   return this.http.post(
-    `${this.baseUrl}/reset-password`,
+    `${this.baseUrl}/password-resets`,
     {
       Token: token,
       NewPassword: newPassword
@@ -129,13 +129,13 @@ clearPendingRegister() {
 
 verifyOtp(formData: FormData) {
   return this.http.post(
-    'http://localhost:5146/api/v1/auth/verify-otp',
+    'http://localhost:5146/api/v1/auth/otp-verifications',
     formData
   );
 }
 resendOtp(email: string) {
   return this.http.post(
-    `${this.baseUrl}/register`,
+    `${this.baseUrl}/users`,
     {
       userName: 'temp',   // backend ignores if already exists
       email,

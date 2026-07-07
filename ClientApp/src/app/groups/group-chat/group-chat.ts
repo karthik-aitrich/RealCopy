@@ -34,6 +34,7 @@ export class GroupChat implements OnInit, OnDestroy {
 
   message = '';
   isLoading = false;
+  isMember = false;
 
   activeMenuId: string | null = null;
 
@@ -73,7 +74,9 @@ export class GroupChat implements OnInit, OnDestroy {
       }
 
       this.groupId = id;
+
       this.groupName = history.state?.groupName ?? 'Group Chat';
+      console.log(this.groupName)
 
       this.messages = [];
       this.members = [];
@@ -168,14 +171,18 @@ console.log('INCOMING:', msg);
   }
 
   loadMembers() {
-    this.groupService.getGroupMembers(this.groupId).subscribe({
-      next: m => {
-        this.members = m;
-        this.cdr.detectChanges();
-      }
-    });
-  }
+  this.groupService.getGroupMembers(this.groupId).subscribe({
+    next: m => {
+      this.members = m;
 
+      this.isMember = this.members.some(
+        x => String(x.userId) === String(this.senderId)
+      );
+
+      this.cdr.detectChanges();
+    }
+  });
+}
   // ===== MENU =====
   getMenuKey(msg: any): string {
     return msg.messageId || msg.clientTempId;
@@ -212,8 +219,15 @@ console.log('INCOMING:', msg);
   }
 
   openGroupInfo() {
-    this.router.navigate(['/app/group-info', this.groupId]);
-  }
+  this.router.navigate(
+    ['/app/group-info', this.groupId],
+    {
+      state: {
+        groupName: this.groupName
+      }
+    }
+  );
+}
 
   get membersCount(): number {
     return this.members.length;

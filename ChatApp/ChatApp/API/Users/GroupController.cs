@@ -1,8 +1,12 @@
-﻿using ChatApp.Controllers;
+﻿using AutoMapper.Execution;
+using ChatApp.Controllers;
+using ChatApp.Hubs;
 using Domain.DTOs;
+using Domain.Models;
 using Domain.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 
 [Authorize]
 [ApiController]
@@ -10,42 +14,56 @@ using Microsoft.AspNetCore.Mvc;
 public class GroupController : BaseAPIController<GroupController>
 {
     private readonly IGroupService _service;
+	private readonly IHubContext<ChatHub> _hubContext;
 
-    public GroupController(IGroupService service)
+	public GroupController(IGroupService service, IHubContext<ChatHub> hubContext)
     {
         _service = service;
-    }
+		_hubContext = hubContext;
+	}
 
     // =========================================
     // CREATE GROUP (OLD – STILL SUPPORTED)
     // =========================================
-    [HttpPost("create")]
+    [HttpPost("groups")]
     public async Task<IActionResult> Create(
         [FromQuery] string name,
         [FromQuery] Guid creatorId
     )
     {
         await _service.CreateGroupAsync(name, creatorId);
+
         return Ok("Group created");
     }
 
-    [HttpPost("create-with-members")]
-    public async Task<IActionResult> CreateWithMembers(
-        [FromBody] CreateGroupDto dto
-    )
-    {
-        var userIdClaim = User.FindFirst("userId")?.Value;
-        if (string.IsNullOrEmpty(userIdClaim))
-            return Unauthorized();
+	[HttpPost("groups-with-members")]
+	public async Task<IActionResult> CreateWithMembers(
+	[FromBody] CreateGroupDto dto)
+	{
+		var userIdClaim = User.FindFirst("userId")?.Value;
+		if (string.IsNullOrEmpty(userIdClaim))
+			return Unauthorized();
 
-        var creatorId = Guid.Parse(userIdClaim);
+		var creatorId = Guid.Parse(userIdClaim);
 
-        var groupId = await _service.CreateGroupAsync(creatorId, dto);
+		var groupsWithMembers =
+			await _service.CreateGroupAsync(creatorId, dto);
 
-        return Ok(new { groupId });
-    }
+		await _hubContext.Clients
+			.Users(groupsWithMembers.MemberIds.Select(x => x.ToString()))
+			.SendAsync("GroupCreated", new
+			{
+				groupId = groupsWithMembers.GroupId,
+				groupName = groupsWithMembers.GroupName,
+				memberIds = groupsWithMembers.MemberIds
+			});
 
-    [HttpGet("user/{userId}")]
+		return Ok(new
+		{
+			groupsWithMembers.GroupId
+		});
+	}
+	[HttpGet("users/{userId}/groups")]
     public async Task<IActionResult> GetUserGroups(Guid userId)
     {
         var groups = await _service.GetUserGroupsAsync(userId);
@@ -65,8 +83,8 @@ public class GroupController : BaseAPIController<GroupController>
     }
 
 
-    [HttpPost("add-member")]
-    public async Task<IActionResult> AddMember([FromBody] AddMemberDto dto)
+    [HttpPost("{groupId}/members")]
+    public async Task<IActionResult> AddMember(Guid groupId,[FromBody] AddMemberDto dto)
     {
         var adminIdClaim = User.FindFirst("userId")?.Value;
         if (string.IsNullOrEmpty(adminIdClaim))
@@ -74,55 +92,102 @@ public class GroupController : BaseAPIController<GroupController>
 
         var adminId = Guid.Parse(adminIdClaim);
 
-        await _service.AddMemberAsync(dto.GroupId, dto.UserId, adminId);
-        return Ok();
+        await _service.AddMemberAsync(groupId, dto.UserId, adminId);
+		// Notify all users currently viewing this group
+		await _hubContext.Clients.Group(groupId.ToString())
+			.SendAsync("MemberAdded", groupId, dto.UserId);
+
+		// Notify the newly added user so that his sidebar refreshes
+		await _hubContext.Clients.User(dto.UserId.ToString())
+			.SendAsync("AddedToGroup");
+
+		return Ok();
     }
 
 
-    [HttpPost("remove-member")]
-    public async Task<IActionResult> RemoveMember(
-        [FromBody] RemoveMemberDto dto
-    )
+    [HttpDelete("{groupId}/members/{userId}")]
+    public async Task<IActionResult> RemoveMember(Guid groupId, Guid userId)
     {
-        await _service.RemoveMemberAsync(
-            dto.GroupId,
-            dto.UserId,
-            dto.AdminId
-        );
+		var adminId = Guid.Parse(User.FindFirst("userId")?.Value);
+		await _service.RemoveMemberAsync(
+			groupId,
+			userId,
+            adminId
 
-        return Ok();
+           
+        );
+		await _hubContext.Clients.User(userId.ToString())
+		.SendAsync("RemovedFromGroup", groupId);
+		// Notify everyone in this chat group
+		await _hubContext.Clients.Group(groupId.ToString())
+			.SendAsync("MemberLeft", groupId, userId);
+		return Ok();
     }
 
     // =========================================
     // LEAVE GROUP
     // =========================================
-    [HttpPost("leave")]
-    public async Task<IActionResult> Leave(
-        [FromBody] LeaveGroupDto dto
-    )
+    [HttpDelete("{groupId}/members/me")]
+    public async Task<IActionResult> Leave( Guid groupId)
     {
-        await _service.LeaveGroupAsync(
-            dto.GroupId,
-            dto.UserId
-        );
+        try
+        {
 
-        return Ok();
-    }
 
-    // =========================================
-    // CHANGE ROLE
-    // =========================================
-    [HttpPost("change-role")]
-    public async Task<IActionResult> ChangeRole(
-        [FromBody] ChangeRoleDto dto
-    )
-    {
-        await _service.ChangeRoleAsync(
-            dto.GroupId,
-            dto.UserId,
-            dto.Role
-        );
+            var userId = Guid.Parse(User.FindFirst("userId")?.Value);
 
-        return Ok();
-    }
+            await _service.LeaveGroupAsync(
+               groupId,
+               userId
+            );
+			// Notify everyone in this chat group
+			await _hubContext.Clients.Group(groupId.ToString())
+				.SendAsync("MemberLeft", groupId, userId);
+
+			// Notify the user who left so that he can remove the group
+			// from his sidebar if needed
+			await _hubContext.Clients.User(userId.ToString())
+				.SendAsync("RemovedFromGroup", groupId);
+
+			return Ok();
+        }
+		catch (Exception ex)
+		{
+			return BadRequest(new { message = ex.Message });
+		}
+	}
+
+	// =========================================
+	// CHANGE ROLE
+	// =========================================
+	[HttpPatch("{groupId}/members/{userId}")]
+	public async Task<IActionResult> ChangeRole(Guid groupId, Guid userId,int role)
+	{
+		await _service.ChangeRoleAsync(
+		  groupId,
+			userId,
+			role
+		);
+
+		return Ok();
+
+	}
+	[HttpDelete("{groupId}")]
+
+	public async Task<IActionResult> DeleteGroup(Guid groupId)
+	{
+		try
+		{
+			var userId = Guid.Parse(User.FindFirst("userId")?.Value);
+
+			await _service.DeleteGroup(groupId, userId);
+
+			return Ok(new { message = "Group deleted successfully" });
+		}
+		catch (Exception ex)
+		{
+			return BadRequest(new { message = ex.Message });
+		}
+	}
+
 }

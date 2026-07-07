@@ -61,7 +61,19 @@
             }
         }
 
-    }
+		public static IReadOnlyCollection<string> GetConnections(Guid userId)
+		{
+			lock (_lock)
+			{
+				if (_connections.TryGetValue(userId, out var connections))
+				{
+					return connections.ToList();
+				}
+
+				return Array.Empty<string>();
+			}
+		}
+	}
 
 
 }

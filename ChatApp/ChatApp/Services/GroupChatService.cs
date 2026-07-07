@@ -107,9 +107,9 @@ namespace ChatApp.Services
         }
 
         // 🔥 USED BY API CONTROLLER
-        public async Task<IEnumerable<GroupMessageDto>> GetGroupMessagesAsync(Guid groupId)
+        public async Task<IEnumerable<GroupMessageDto>> GetGroupMessagesAsync(Guid groupId, Guid userId)
         {
-            var messages = await _repo.GetGroupMessagesAsync(groupId);
+            var messages = await _repo.GetGroupMessagesAsync(groupId, userId);
 
             var result = new List<GroupMessageDto>();
 

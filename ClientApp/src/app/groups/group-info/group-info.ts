@@ -5,7 +5,7 @@ import { GroupService } from '../../../services/group.service';
 import { Subject, Subscription } from 'rxjs';
 import { GroupStateService } from '../../../services/GroupStateService ';
 import { forkJoin } from 'rxjs';
-
+import { ChatService } from '../../../services/chat.service';
 @Component({
   standalone: true,
   imports: [CommonModule],
@@ -15,12 +15,13 @@ import { forkJoin } from 'rxjs';
 export class GroupInfo implements OnInit, OnDestroy {
 
   groupId!: string;
+  
   members: any[] = [];
   myId = localStorage.getItem('userId');
   showAddMembers = false;
 allUsers: any[] = [];
 addableUsers: any[] = [];
-
+groupName=""
 selectedUserIds: string[] = [];
 isAdmin = false;
 
@@ -34,15 +35,48 @@ isAdmin = false;
     private groupService: GroupService,
     private router: Router,
     private cdr: ChangeDetectorRef  ,
-    private groupState: GroupStateService
+    private groupState: GroupStateService,
+     private chat: ChatService,
   ) {}
 
   ngOnInit() {
   // 🔹 1. Snapshot (handles refresh)
   const id = this.route.snapshot.paramMap.get('groupId');
+    const nav = history.state;
+  console.log(nav.groupName);
+console.log('history.state:', history.state);
+      this.groupName = history.state?.groupName ?? 'Group Members';
+      console.log(this.groupName)
   if (id) {
     this.groupId = id;
     this.loadMembers();
+        // Join the SignalR group
+    this.chat.hubConnection.invoke('JoinGroup', this.groupId);
+    console.log("memberjoined")
+    this.chat.hubConnection.on(
+  'MemberLeft',
+
+  (groupId: string, userId: string) => {
+console.log("memberLeft")
+    if (groupId === this.groupId) {
+     this.loadMembers();
+
+      this.cdr.detectChanges();
+    }
+  }
+);
+this.chat.hubConnection.on(
+  'MemberAdded',
+  (groupId: string, userId: string) => {
+
+    console.log('MemberAdded received');
+
+    if (groupId === this.groupId) {
+      this.loadMembers();
+      this.cdr.detectChanges();
+    }
+  }
+);
   }
 
   // 🔹 2. Subscribe (handles navigation)
@@ -89,10 +123,7 @@ toggleSelect(userId: string) {
 
 addMembers() {
   const requests = this.selectedUserIds.map(userId =>
-    this.groupService.addMember({
-      groupId: this.groupId,
-      userId
-    })
+    this.groupService.addMember(this.groupId, userId)
   );
 
   forkJoin(requests).subscribe({
@@ -146,11 +177,70 @@ loadMembers() {
 
 
   remove(userId: string) {
-    this.groupService.removeMember(this.groupId, userId).subscribe(() => {
-      this.members = this.members.filter(m => m.userId !== userId);
-      this.cdr.detectChanges();
-    });
+    const confirmed = confirm('Are you sure you want to remove this member?');
+
+  if (!confirmed) {
+    return;
   }
+    this.groupService.removeMember(this.groupId, userId)
+    .subscribe({
+      next: () => {
+
+        // Remove member from UI
+        this.members = this.members.filter(m => m.userId !== userId);
+
+        // If no members remain, delete the group
+        if (this.members.length === 0) {
+
+          this.groupService.deleteGroup(this.groupId)
+            .subscribe({
+              next: () => {
+                alert('Group deleted successfully');
+                this.router.navigate(['/groups']);
+              },
+
+              error: (err) => {
+                alert(err.error?.message || 'Failed to delete group');
+              }
+            });
+        }
+
+        this.cdr.detectChanges();
+      },
+
+      error: (err) => {
+        alert(err.error?.message || 'Failed to remove member');
+      }
+    });
+}
+deleteGroup(): void {
+
+  const confirmed = confirm(
+    'You are no longer a member of this group. Do you want to delete it?'
+  );
+
+  if (!confirmed) {
+    return;
+  }
+
+  this.groupService.deleteGroup(this.groupId)
+    .subscribe({
+      next: () => {
+        this.router.navigate(['/app']);
+        alert('Group deleted successfully');
+
+        
+      },
+
+      error: (err) => {
+        console.error('Error deleting group:', err);
+        alert(err.error?.message || 'Failed to delete group');
+      }
+    });
+}
+get isMember(): boolean {
+  return this.members.some(m => m.userId === this.myId);
+}
 
   changeRole(userId: string, role: number) {
   this.groupService.changeRole(this.groupId, userId, role)
@@ -164,13 +254,18 @@ loadMembers() {
 }
 
 
-  leave() {
-    this.groupService.leaveGroup(this.groupId).subscribe(() => {
+ leave() {
+  this.groupService.leaveGroup(this.groupId).subscribe({
+    next: () => {
       this.router.navigate(['/app']);
-    });
-  }
-
+    },
+    error: (err) => {
+      alert(err.error.message);
+    }
+  });
+}
   ngOnDestroy() {
     this.routeSub?.unsubscribe();
+     this.chat.hubConnection.off('MemberLeft');
   }
 }
