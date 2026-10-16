@@ -12,6 +12,10 @@ public class GroupChatController : BaseAPIController<GroupChatController>
     {
         _service = service;
     }
+    //public GroupChatController(IGroupChatService service)
+    //{
+    //    _service = service;
+    //}
 
     [HttpGet("group/{groupId}")]
     public async Task<IActionResult> GetGroupMessages(Guid groupId)
